@@ -41,13 +41,13 @@ function solve(content: string[]){
                 distance++; 
                 if (trees[i][k] >= trees[i][j]) break;
             } 
-            visible[i][j] *= distance === 0 ? 1 : distance;
+            visible[i][j] *= distance;
             distance = 0;
             for (let k = j+1; k <= trees[i].length-1;k++){
                 distance++; 
                 if (trees[i][k] >= trees[i][j]) break;
             } 
-            visible[i][j] *= distance === 0 ? 1 : distance;
+            visible[i][j] *= distance;
         }
     }
 
@@ -59,13 +59,13 @@ function solve(content: string[]){
                 distance++; 
                 if (trees[k][j] >= trees[i][j]) break;
             } 
-            visible[i][j] *= distance === 0 ? 1 : distance;
+            visible[i][j] *= distance;
             distance = 0;
             for (let k = i+1; k <= trees.length-1;k++){
                 distance++; 
                 if (trees[k][j] >= trees[i][j]) break;
             } 
-            visible[i][j] *= distance === 0 ? 1 : distance;
+            visible[i][j] *= distance;
         }
     }    
     visible.forEach(v=>{
