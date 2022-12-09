@@ -39,13 +39,13 @@ function solve(content: string[]){
         for (let j = 1; j < trees[i].length-1;j++){            
             if (trees[i][j] > max) { visible[i][j] = 1; max = trees[i][j]; } 
         }
-        max = trees[i][trees.length-1];
+        max = trees[i][trees[i].length-1];
         for (let j = trees[i].length-2; j > 0;j--){
             if (trees[i][j] > max) { visible[i][j] = 1; max = trees[i][j] } 
         }
     }
 
-    // column visibility
+    //column visibility
     for (let j = 1; j < trees[0].length-1;j++) {
         let max = trees[0][j];
         for (let i = 1; i < trees.length-1;i++){
