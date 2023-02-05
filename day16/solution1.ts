@@ -47,7 +47,7 @@ function getBestClosed(p: Path, g: Graph) : Array<number> {
     for (let i=0; i<g.sortedNodes.length; i++){
         if (g.sortedNodes[i].rate !== 0 && !p.opened.has(g.sortedNodes[i].id))
             res.push(g.sortedNodes[i].id)
-        if (res.length >= 10) break;
+        if (res.length >= 14) break;
     }
     return res    
 }

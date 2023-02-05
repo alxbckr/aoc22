@@ -1,5 +1,34 @@
+import { time } from 'console';
 import * as fs from 'fs';
-import { Context } from 'vm';
+
+type Node = {
+    id: number,
+    name: string,
+    rate: number,
+}
+
+type Graph = {
+    nodes: Array<Node>,
+    sortedNodes: Array<Node>,
+    adj: Array<Array<number>>;    
+}
+
+type Dist = {
+    id: number,
+    time: number,
+    between: Array<number>,
+}
+
+type PathItem = {
+    id: number,
+    cost: number,
+    time: number,
+}
+
+type Path = {
+    items: Array<PathItem>
+    opened: Map<number,boolean>
+}
 
 function read(filename: string): string[] {
     let content: string;
@@ -16,65 +45,116 @@ function read(filename: string): string[] {
     return res;
 }
 
-type Coord = {
-    x: number,
-    y: number
-}
-
-type Pair = {
-    sensor: Coord,
-    beacon : Coord,
-}
-
-function calcManhattanDist(a: Coord, b: Coord) : number{
-    return (Math.abs(a.x - b.x)+Math.abs(a.y-b.y));
-}
-
-function generateRadiusPoints(a: Coord, dist: number) : Array<Coord> {
-    let res : Array<Coord> = [];    
-    let x = a.x-dist; 
-    let y = a.y
-    while (x <= a.x + dist) {       
-        res.push({x: x, y: y});
-        x++;
-        if (x <= a.x) y--;
-        else y++;
+function getBestClosed(p: Path, g: Graph) : Array<number> {
+    let res : Array<number> = []
+    for (let i=0; i<g.sortedNodes.length; i++){
+        if (g.sortedNodes[i].rate !== 0 && !p.opened.has(g.sortedNodes[i].id))
+            res.push(g.sortedNodes[i].id)
+        if (res.length >= 10) break;
     }
-    x = a.x-dist+1; 
-    y = a.y+1
-    while (x <= a.x + dist-1) {       
-        res.push({x: x, y: y});
-        x++;
-        if (x <= a.x) y++;
-        else y--;
-    }    
-    return res;
+    return res    
 }
 
 function solve(content: string[]){    
-    let pairs: Array<Pair> = [];
-    let minX = Number.MAX_SAFE_INTEGER, maxX = Number.MIN_SAFE_INTEGER;
-    content.forEach(c=>{
-        let [s,b] = c.replace("Sensor at x=","").replace(": closest beacon is at x=", "/").replaceAll("y=","").split("/");
-        let [xs,ys] = s.split(",").map(Number);
-        let [xb,yb] = b.split(",").map(Number);
-        pairs.push({sensor: {x:xs, y:ys}, beacon: {x: xb,y: yb}})
-    });
-        
-    let c : Coord = {x:0,y:0};
-    pairs.forEach(p=>{
-        let points = generateRadiusPoints(p.sensor,calcManhattanDist(p.sensor,p.beacon)+1);
-        points.every(point=>{
-            if (point.x > 4000000 || point.x < 0 || point.y > 4000000 || point.y < 0 ) return false;
-            let found = true;
-            pairs.forEach(pc=>{
-                if (calcManhattanDist(pc.sensor,pc.beacon) >= calcManhattanDist(pc.sensor,point)) found = false;
-            })
-            if (found) { c = point; return false; }
-            return true;
-        })
+    
+    let graph: Graph = { nodes: [], adj: [], sortedNodes: [] }
+    graph.nodes = Array(content.length).fill(null)
+    let valvesNameMap : Map<string, number> = new Map()
+    let valvesMap : Map<string, string[]> = new Map()
+
+    // Build Graph
+    content.forEach((c,idx)=>{
+        let p = c.replace('Valve ', '')
+                 .replace(' has flow rate=', ' ')
+                 .replace('; tunnels lead to valves ', ' ')
+                 .replace('; tunnel leads to valve ', ' ')
+                 .replaceAll(',', '')
+
+        let [name, rate, ...valves] = p.split(' ');
+
+        graph.nodes[idx] = {id: idx, name: name, rate: Number(rate)}
+        valvesNameMap.set(name, idx)
+        valvesMap.set(name,valves)
     })
-    console.log(c);
+
+    graph.nodes.forEach((n,idx) => {
+        graph.adj.push([])
+        graph.adj[idx].push(...Array.from(valvesMap.get(n.name)!, v => {
+            return valvesNameMap.get(v)!;
+        }))
+    })
+
+    graph.sortedNodes = Array.from(graph.nodes)
+    graph.sortedNodes.sort((a,b)=>b.rate-a.rate)
+
+    // BFS get shortest distances between nodes
+    let shortestPaths: Array<Array<Dist>> = []    
+
+    for (let node of graph.nodes){
+        let q : Dist[] = []
+        let visited: boolean[] = Array(graph.nodes.length).fill(false);
+        
+        q.push({id: node.id, time: 0, between: []});
+        shortestPaths.push(Array(graph.nodes.length))
+
+        while(q.length > 0){
+            const v = q.shift();
+            if (!v) break;
+            visited[v.id] = true 
+            shortestPaths[node.id][v.id] = v
+            graph.adj[v.id].forEach(a=>{
+                if (!visited[a]){
+                    q.push({id: a, time: v.time+1, between: [...Array.from(v.between), v.id] });
+                }
+            });           
+        }
+    }
+
+    // start building paths
+    let pq: Path[] = []
+    let solved: Path[] = []
+    
+    let ps : Path = { items: [{id: valvesNameMap.get('AA')!, cost:0, time: 0},
+                              {id: valvesNameMap.get('AA')!, cost:0, time: 0}],
+                      opened: new Map()
+                    }
+    pq.push(ps)
+
+    while (pq.length > 0) {
+        const p = pq.shift()
+        if (!p) break;
+        let hasOpened = false
+
+        let bestClosed = getBestClosed(p,graph)
+        while (bestClosed.length > 0) {
+            let newPath : Path = {items: [], opened: new Map(p.opened)}
+            for (let j = 0; j<=1; j++){
+                let n = bestClosed.shift()
+                if (!n){ 
+                    newPath.items.push({...p.items[j]})
+                    continue;
+                }               
+                const time = p.items[j].time + shortestPaths[p.items[j].id][n].time + 1
+                if (time > 26){
+                    newPath.items.push({...p.items[j]})
+                    continue;
+                }
+                hasOpened = true
+                newPath.opened.set(n,true)
+                let cost = p.items[j].cost + graph.nodes[n].rate * (26 - time)
+                let pn: PathItem = {id: n, cost: cost, time: time}
+                newPath.items.push(pn)
+            }
+            pq.push(newPath)
+        }
+        if (!hasOpened) 
+            solved.push(p)
+    }    
+
+    solved.sort((a,b)=>(b.items[0].cost + b.items[1].cost-a.items[0].cost+a.items[1].cost))    
+    console.log(solved[0].items[0].cost+solved[0].items[1].cost)
+    console.log(solved[0].items[0])
+    console.log(solved[0].items[1])
 }
 
 const content = read(process.argv.slice(2)[0]);
