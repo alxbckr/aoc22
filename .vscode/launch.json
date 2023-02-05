@@ -4,14 +4,18 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
             "skipFiles": [
-                "<node_internals>/**"
+                "<node_internals>/**",
+                "node_modules/**"
             ],
-            "program": "${workspaceFolder}/day09/solution2.ts",
+            "runtimeArgs": ["-r", "ts-node/register"],
+            "program": "${workspaceFolder}/day16/solution1.ts",
+            "args": ["./day16/input_sample.txt"],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ]
