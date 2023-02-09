@@ -19,15 +19,13 @@ type Dist = {
     between: Array<number>,
 }
 
-type PathItem = {
-    id: number,
-    cost: number,
-    time: number,
-    //opened: Array<number>
-}
-
 type Path = {
-    items: Array<PathItem>
+    id1: number,
+    cost1: number,
+    time1: number,
+    id2: number,
+    cost2: number,
+    time2: number,
     opened: Map<number,boolean>,    
 }
 
@@ -51,7 +49,7 @@ function getBestClosed(p: Path, g: Graph) : Array<number> {
     for (let i=0; i<g.sortedNodes.length; i++){
         if (g.sortedNodes[i].rate !== 0 && !p.opened.has(g.sortedNodes[i].id))
             res.push(g.sortedNodes[i].id)
-        if (res.length >= 7) break;
+        if (res.length >= 10) break;
     }
     return res    
 }
@@ -115,60 +113,62 @@ function solve(content: string[]){
     let pq: Path[] = []
     let solved: Path[] = []
     
-    let ps : Path = { items: [{id: valvesNameMap.get('AA')!, cost:0, time: 0},
-                              {id: valvesNameMap.get('AA')!, cost:0, time: 0}],
+    let ps : Path = { id1: valvesNameMap.get('AA')!, cost1:0, time1: 0,
+                      id2: valvesNameMap.get('AA')!, cost2:0, time2: 0,
                       opened: new Map()
                     }
     pq.push(ps)
 
     while (pq.length > 0) {
+
+        if (pq.length % 1000 === 0) console.log(pq.length)
+
         const p = pq.shift()
         if (!p) break;
         let hasOpened = false
 
         let bestClosed = getBestClosed(p,graph)
         while (bestClosed.length > 0) {
-            let newPath : Path = {items: [], opened: new Map(p.opened)}
+            let newPath : Path = {cost1: p.cost1, time1: p.time1, id1: p.id1, 
+                                  cost2: p.cost2, time2: p.time2, id2: p.id2, 
+                                  opened: new Map(p.opened)}
 
             let n = bestClosed.shift()
             if (!n) break;
 
             // one with more time wins
-            //newPath.items.push({cost: p.items[0].cost, time: p.items[0].time, id: p.items[0].id, opened: Array.from(p.items[0].opened)})
-            //newPath.items.push({cost: p.items[1].cost, time: p.items[1].time, id: p.items[1].id, opened: Array.from(p.items[1].opened)})
-            newPath.items.push({cost: p.items[0].cost, time: p.items[0].time, id: p.items[0].id})
-            newPath.items.push({cost: p.items[1].cost, time: p.items[1].time, id: p.items[1].id})
-            let i = 0
-            if (p.items[0].time + shortestPaths[p.items[0].id][n].time > p.items[1].time + shortestPaths[p.items[1].id][n].time ) {
-                i = 1
+            if (p.time1 + shortestPaths[p.id1][n].time < p.time2 + shortestPaths[p.id2][n].time) {
+                const time = p.time1 + shortestPaths[p.id1][n].time + 1
+                if (time > 26){
+                    continue;
+                }
+                newPath.id1 = n
+                newPath.cost1 += graph.nodes[n].rate * (26 - time)
+                newPath.time1 = time 
             }
-
-            const time = p.items[i].time + shortestPaths[p.items[i].id][n].time + 1
-            if (time > 26){
-                continue;
+            else {
+                const time = p.time2 + shortestPaths[p.id2][n].time + 1
+                if (time > 26){
+                    continue;
+                }
+                newPath.id2 = n
+                newPath.cost2 += graph.nodes[n].rate * (26 - time)
+                newPath.time2 = time 
             }
-
             hasOpened = true
             newPath.opened.set(n,true)
-            newPath.items[i].id = n
-            newPath.items[i].cost = p.items[i].cost + graph.nodes[n].rate * (26 - time)
-            newPath.items[i].time = time 
-            // newPath.items[i].opened.push(n)
-
-            pq.push(newPath)
+            if ( newPath.time1 >= 25 && newPath.time2 >= 25) solved.push(newPath)
+            else pq.push(newPath)
         }
         if (!hasOpened) 
             solved.push(p)
     }    
 
-    solved.sort((a,b)=>(b.items[0].cost + b.items[1].cost-a.items[0].cost-a.items[1].cost))    
+    solved.sort((a,b)=>(b.cost1+b.cost2-a.cost1-a.cost2))    
 
     for (let i = 0; i < 1; i++){
-        console.log(solved[i].items[0].cost+solved[i].items[1].cost)
-        console.log(solved[i].items[0])
-        console.log(solved[i].items[1])
-        // console.log(Array.from(solved[i].items[0].opened, v => graph.nodes[v].name).join(','))
-        // console.log(Array.from(solved[i].items[1].opened, v => graph.nodes[v].name).join(','))
+        console.log(solved[i].cost1+solved[i].cost2)
+        console.log(solved[i])
     }
 }
 
