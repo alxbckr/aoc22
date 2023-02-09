@@ -14,7 +14,7 @@
                 "node_modules/**"
             ],
             "runtimeArgs": ["-r", "ts-node/register"],
-            "program": "${workspaceFolder}/day16/solution1.ts",
+            "program": "${workspaceFolder}/day16/solution2.ts",
             "args": ["./day16/input_sample.txt"],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"

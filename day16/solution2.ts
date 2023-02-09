@@ -23,11 +23,12 @@ type PathItem = {
     id: number,
     cost: number,
     time: number,
+    //opened: Array<number>
 }
 
 type Path = {
     items: Array<PathItem>
-    opened: Map<number,boolean>
+    opened: Map<number,boolean>,    
 }
 
 function read(filename: string): string[] {
@@ -50,7 +51,7 @@ function getBestClosed(p: Path, g: Graph) : Array<number> {
     for (let i=0; i<g.sortedNodes.length; i++){
         if (g.sortedNodes[i].rate !== 0 && !p.opened.has(g.sortedNodes[i].id))
             res.push(g.sortedNodes[i].id)
-        if (res.length >= 10) break;
+        if (res.length >= 7) break;
     }
     return res    
 }
@@ -128,33 +129,47 @@ function solve(content: string[]){
         let bestClosed = getBestClosed(p,graph)
         while (bestClosed.length > 0) {
             let newPath : Path = {items: [], opened: new Map(p.opened)}
-            for (let j = 0; j<=1; j++){
-                let n = bestClosed.shift()
-                if (!n){ 
-                    newPath.items.push({...p.items[j]})
-                    continue;
-                }               
-                const time = p.items[j].time + shortestPaths[p.items[j].id][n].time + 1
-                if (time > 26){
-                    newPath.items.push({...p.items[j]})
-                    continue;
-                }
-                hasOpened = true
-                newPath.opened.set(n,true)
-                let cost = p.items[j].cost + graph.nodes[n].rate * (26 - time)
-                let pn: PathItem = {id: n, cost: cost, time: time}
-                newPath.items.push(pn)
+
+            let n = bestClosed.shift()
+            if (!n) break;
+
+            // one with more time wins
+            //newPath.items.push({cost: p.items[0].cost, time: p.items[0].time, id: p.items[0].id, opened: Array.from(p.items[0].opened)})
+            //newPath.items.push({cost: p.items[1].cost, time: p.items[1].time, id: p.items[1].id, opened: Array.from(p.items[1].opened)})
+            newPath.items.push({cost: p.items[0].cost, time: p.items[0].time, id: p.items[0].id})
+            newPath.items.push({cost: p.items[1].cost, time: p.items[1].time, id: p.items[1].id})
+            let i = 0
+            if (p.items[0].time + shortestPaths[p.items[0].id][n].time > p.items[1].time + shortestPaths[p.items[1].id][n].time ) {
+                i = 1
             }
+
+            const time = p.items[i].time + shortestPaths[p.items[i].id][n].time + 1
+            if (time > 26){
+                continue;
+            }
+
+            hasOpened = true
+            newPath.opened.set(n,true)
+            newPath.items[i].id = n
+            newPath.items[i].cost = p.items[i].cost + graph.nodes[n].rate * (26 - time)
+            newPath.items[i].time = time 
+            // newPath.items[i].opened.push(n)
+
             pq.push(newPath)
         }
         if (!hasOpened) 
             solved.push(p)
     }    
 
-    solved.sort((a,b)=>(b.items[0].cost + b.items[1].cost-a.items[0].cost+a.items[1].cost))    
-    console.log(solved[0].items[0].cost+solved[0].items[1].cost)
-    console.log(solved[0].items[0])
-    console.log(solved[0].items[1])
+    solved.sort((a,b)=>(b.items[0].cost + b.items[1].cost-a.items[0].cost-a.items[1].cost))    
+
+    for (let i = 0; i < 1; i++){
+        console.log(solved[i].items[0].cost+solved[i].items[1].cost)
+        console.log(solved[i].items[0])
+        console.log(solved[i].items[1])
+        // console.log(Array.from(solved[i].items[0].opened, v => graph.nodes[v].name).join(','))
+        // console.log(Array.from(solved[i].items[1].opened, v => graph.nodes[v].name).join(','))
+    }
 }
 
 const content = read(process.argv.slice(2)[0]);
