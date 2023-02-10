@@ -45,11 +45,12 @@ function read(filename: string): string[] {
 }
 
 function getBestClosed(p: Path, g: Graph) : Array<number> {
+    if (p.opened.size === g.sortedNodes.length) return []
     let res : Array<number> = []
     for (let i=0; i<g.sortedNodes.length; i++){
-        if (g.sortedNodes[i].rate !== 0 && !p.opened.has(g.sortedNodes[i].id))
+        if (!p.opened.has(g.sortedNodes[i].id))
             res.push(g.sortedNodes[i].id)
-        if (res.length >= 10) break;
+        if (res.length >= 16) break;
     }
     return res    
 }
@@ -83,7 +84,7 @@ function solve(content: string[]){
         }))
     })
 
-    graph.sortedNodes = Array.from(graph.nodes)
+    graph.sortedNodes = Array.from(graph.nodes.filter(v=>v.rate > 0))
     graph.sortedNodes.sort((a,b)=>b.rate-a.rate)
 
     // BFS get shortest distances between nodes
@@ -118,6 +119,9 @@ function solve(content: string[]){
                       opened: new Map()
                     }
     pq.push(ps)
+
+    let bestPathCost = 0
+    let bestPathTime = 26
 
     while (pq.length > 0) {
 
@@ -155,11 +159,17 @@ function solve(content: string[]){
                 newPath.cost2 += graph.nodes[n].rate * (26 - time)
                 newPath.time2 = time 
             }
+
+            if (newPath.cost1 + newPath.cost2 >= bestPathCost){
+                bestPathCost = newPath.cost1 + newPath.cost2
+                bestPathTime = newPath.time1 + newPath.time2
+            }
+            if (newPath.time1 + newPath.time2 >= bestPathTime && newPath.cost1 + newPath.cost2 < bestPathCost ) continue
+
             hasOpened = true
             newPath.opened.set(n,true)
-            if ( newPath.time1 >= 25 && newPath.time2 >= 25) solved.push(newPath)
-            else pq.push(newPath)
-        }
+            pq.push(newPath)
+        }        
         if (!hasOpened) 
             solved.push(p)
     }    
