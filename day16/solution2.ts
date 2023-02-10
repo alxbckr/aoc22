@@ -21,12 +21,13 @@ type Dist = {
 
 type Path = {
     id1: number,
-    cost1: number,
     time1: number,
     id2: number,
-    cost2: number,
     time2: number,
+    cost: number,
     opened: Map<number,boolean>,    
+    openedList1: Array<number>,
+    openedList2: Array<number>
 }
 
 function read(filename: string): string[] {
@@ -50,7 +51,7 @@ function getBestClosed(p: Path, g: Graph) : Array<number> {
     for (let i=0; i<g.sortedNodes.length; i++){
         if (!p.opened.has(g.sortedNodes[i].id))
             res.push(g.sortedNodes[i].id)
-        if (res.length >= 16) break;
+        if (res.length >= 10) break;
     }
     return res    
 }
@@ -114,14 +115,14 @@ function solve(content: string[]){
     let pq: Path[] = []
     let solved: Path[] = []
     
-    let ps : Path = { id1: valvesNameMap.get('AA')!, cost1:0, time1: 0,
-                      id2: valvesNameMap.get('AA')!, cost2:0, time2: 0,
-                      opened: new Map()
+    let ps : Path = { id1: valvesNameMap.get('AA')!, cost:0, time1: 0,
+                      id2: valvesNameMap.get('AA')!, time2: 0,
+                      opened: new Map(),
+                      openedList1: [], openedList2: []
                     }
     pq.push(ps)
 
     let bestPathCost = 0
-    let bestPathTime = 26
 
     while (pq.length > 0) {
 
@@ -133,52 +134,58 @@ function solve(content: string[]){
 
         let bestClosed = getBestClosed(p,graph)
         while (bestClosed.length > 0) {
-            let newPath : Path = {cost1: p.cost1, time1: p.time1, id1: p.id1, 
-                                  cost2: p.cost2, time2: p.time2, id2: p.id2, 
-                                  opened: new Map(p.opened)}
-
             let n = bestClosed.shift()
             if (!n) break;
 
-            // one with more time wins
-            if (p.time1 + shortestPaths[p.id1][n].time < p.time2 + shortestPaths[p.id2][n].time) {
-                const time = p.time1 + shortestPaths[p.id1][n].time + 1
+            let newPath : Path = { cost: p.cost, time1: p.time1, id1: p.id1, 
+                                    time2: p.time2, id2: p.id2, 
+                                    opened: new Map(p.opened),
+                                    openedList1: Array.from(p.openedList1),
+                                    openedList2: Array.from(p.openedList2),
+                                }
+            
+            let time = 0                                
+            if (p.time1 + shortestPaths[p.id1][n].time <= p.time2 + shortestPaths[p.id2][n].time) {                                    
+                time = p.time1 + shortestPaths[p.id1][n].time + 1
                 if (time > 26){
                     continue;
                 }
                 newPath.id1 = n
-                newPath.cost1 += graph.nodes[n].rate * (26 - time)
+                newPath.cost += graph.nodes[n].rate * (26 - time)
                 newPath.time1 = time 
-            }
-            else {
-                const time = p.time2 + shortestPaths[p.id2][n].time + 1
+                newPath.openedList1.push(n)                
+            } else {
+                time = p.time2 + shortestPaths[p.id2][n].time + 1
                 if (time > 26){
                     continue;
                 }
                 newPath.id2 = n
-                newPath.cost2 += graph.nodes[n].rate * (26 - time)
+                newPath.cost += graph.nodes[n].rate * (26 - time)
                 newPath.time2 = time 
+                newPath.openedList2.push(n)
             }
 
-            if (newPath.cost1 + newPath.cost2 >= bestPathCost){
-                bestPathCost = newPath.cost1 + newPath.cost2
-                bestPathTime = newPath.time1 + newPath.time2
-            }
-            if (newPath.time1 + newPath.time2 >= bestPathTime && newPath.cost1 + newPath.cost2 < bestPathCost ) continue
+            // check if it is worth continuing
+            if (newPath.cost + bestClosed.reduce((p,c)=>p+graph.nodes[c].rate*(26 - time),0) < bestPathCost)
+                continue
 
             hasOpened = true
             newPath.opened.set(n,true)
             pq.push(newPath)
         }        
-        if (!hasOpened) 
+        if (!hasOpened){
             solved.push(p)
+            if (p.cost > bestPathCost) bestPathCost = p.cost
+        } 
     }    
 
-    solved.sort((a,b)=>(b.cost1+b.cost2-a.cost1-a.cost2))    
-
-    for (let i = 0; i < 1; i++){
-        console.log(solved[i].cost1+solved[i].cost2)
+    solved.sort((a,b)=>(b.cost-a.cost))    
+    console.log(solved.length)
+    for (let i = 0; i < 5; i++){
+        console.log(solved[i].cost)
         console.log(solved[i])
+        console.log(Array.from(solved[i].openedList1, v => graph.nodes[v].name).join(','))
+        console.log(Array.from(solved[i].openedList2, v => graph.nodes[v].name).join(','))
     }
 }
 
